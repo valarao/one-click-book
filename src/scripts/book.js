@@ -42,6 +42,8 @@ async function bookEntry(page, rows, timeIndex, roomIndex, length) {
   await page.evaluate((len) => {
     document.getElementById('end_seconds').selectedIndex = len - 1;
   }, length);
+
+  await page.click('#edit_entry_submit_save > input');
 }
 
 /**
@@ -114,14 +116,14 @@ function getNextPossibleTimeIndex() {
 
 async function book(username, password) {
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: process.env.NODE_ENV === 'production',
   });
 
   const [page] = await browser.pages();
 
   await login(page, username, password);
 
-  const { matrix, rows } = await buildMatrix(page);
+  const { matrix, rows, columnNames } = await buildMatrix(page);
   const timeIndex = getNextPossibleTimeIndex();
 
   // Compute two alternatives
@@ -132,6 +134,9 @@ async function book(username, password) {
 
   const columnIndex = convertIndex(matrix, bestEntries[0].bestTime, bestEntries[0].bestRoom);
   await bookEntry(page, rows, bestEntries[0].bestTime, columnIndex, bestEntries[0].maxLength);
+
+  // eslint-disable-next-line no-console
+  console.log(`Booked ${columnNames[bestEntries[0].bestRoom]} at timeIndex ${bestEntries[0].bestTime} for ${bestEntries[0].maxLength} thirty-minute increments`);
 }
 
 module.exports = book;

@@ -22,8 +22,9 @@ async function buildMatrix(page) {
 
   columns.shift(); // remove first `Time` header element
 
-  // const columnNames = await (Promise.all(columns.map(column
-  // => page.evaluate(e => e.innerText, column))));
+  const columnNames = await Promise.all(columns.map(
+    column => page.evaluate(e => e.innerText, column),
+  ));
 
   // Creates zero-initialized 2D array of size `rows.length`
   // eslint-disable-next-line no-unused-vars
@@ -60,7 +61,7 @@ async function buildMatrix(page) {
     });
   });
 
-  return { matrix, rows };
+  return { matrix, rows, columnNames };
 }
 
 module.exports = {
