@@ -1,0 +1,8 @@
+{
+  "name": "one-click-book",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/zpv/one-click-book.git",
+  "author": "Steven Z. <Steven@Zhao.io>",
+  "license": "MIT"
+}
