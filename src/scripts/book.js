@@ -52,7 +52,7 @@ const book = async (username, password) => {
         continue
       } else if (type == "new") {
         cursor = matrix[index].indexOf(0, cursor + 1)
-      } else if (type == "I") {
+      } else if (type.charAt(0) == "I") {
         const length = cl[1]
 
         for (let i = 0; i < length; i ++) {
@@ -66,10 +66,20 @@ const book = async (username, password) => {
 
   const date = new Date()
 
-  const hour = date.getHours()
-  const minutes = date.getMinutes()
+  const inputHour = date.getHours()
+  const inputMinutes = date.getMinutes()
 
-  const index = Math.max(Math.min(hour - 7, 0) * 2 + (minutes >= 30 ? 2 : 1), 30)
+  let bookingHour = inputHour;
+  let bookingMinutes = 0;
+
+  if (inputMinutes >= 30) {
+    bookingHour++
+  } else {
+    bookingMinutes = 30  
+  }
+
+  const index = Math.min(Math.max((bookingHour - 7) * 2, 0) + (bookingMinutes == 30 ? 1 : 0), 30)
+
   console.log(index)
 
   console.log(matrix.join("\n"));
