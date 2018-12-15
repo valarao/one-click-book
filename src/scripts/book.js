@@ -26,12 +26,13 @@ const book = async (username, password) => {
   await xclick(page, LOGIN_BTN_XPATH)
 
   await page.waitForNavigation({ waitUntil: 'networkidle2' })
-  await page.goto('https://booking.sauder.ubc.ca/ugr/day.php?year=2018&month=09&day=07&area=1&room=13')
+  await page.goto('https://booking.sauder.ubc.ca/ugr/day.php?year=2018&month=12&day=6&area=1&room=13')
 
+  const columns = await page.$$('#day_main > thead:nth-child(1) > tr > th')
   const rows = await page.$$('#day_main > tbody > tr')
 
   // Creates zero-initialized 2D array of size `rows.length`
-  let matrix = [...Array(rows.length)].map(e => Array(rows.length).fill(0));
+  let matrix = [...Array(rows.length)].map(e => Array(columns.length - 1).fill(0));
 
   for (let index in rows) {
     index = parseInt(index)
@@ -66,8 +67,8 @@ const book = async (username, password) => {
 
   const date = new Date()
 
-  const inputHour = date.getHours()
-  const inputMinutes = date.getMinutes()
+  const inputHour = 14
+  const inputMinutes = 25
 
   let bookingHour = inputHour;
   let bookingMinutes = 0;
@@ -78,11 +79,31 @@ const book = async (username, password) => {
     bookingMinutes = 30  
   }
 
-  const index = Math.min(Math.max((bookingHour - 7) * 2, 0) + (bookingMinutes == 30 ? 1 : 0), 30)
+  const timeIndex = Math.min(Math.max((bookingHour - 7) * 2, 0) + (bookingMinutes == 30 ? 1 : 0), 30)
 
-  console.log(index)
+  let max = 0
+  let bestRoom = 0
 
-  console.log(matrix.join("\n"));
+  for (let roomIndex in matrix[timeIndex]) {
+    if (matrix[timeIndex][roomIndex] == 0) {
+      // check belows
+      let offset = 1
+      while (offset < 4 && (timeIndex + offset < matrix.length)) {
+        if (matrix[timeIndex + offset][roomIndex] == 0) {
+          offset++
+        } else {
+          break
+        }
+      }
+
+      if (offset > max) {
+        max = offset
+        bestRoom = roomIndex
+      }
+    }
+  }
+  console.log(matrix.join('\n'))
+  console.log(`Best position is at: ${bestRoom} for ${max} thirty minute interval(s)`)
 
 }
 
