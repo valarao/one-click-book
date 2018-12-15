@@ -12,7 +12,7 @@ const book = async (username, password) => {
     headless: false,
   });
 
-  const page = await browser.newPage();
+  const [page] = await browser.pages();
 
   await page.goto(BOOK_URL)
 
@@ -26,13 +26,17 @@ const book = async (username, password) => {
   await xclick(page, LOGIN_BTN_XPATH)
 
   await page.waitForNavigation({ waitUntil: 'networkidle2' })
-  await page.goto('https://booking.sauder.ubc.ca/ugr/day.php?year=2018&month=12&day=6&area=1&room=13')
+  await page.goto('https://booking.sauder.ubc.ca/ugr/day.php?year=2018&month=12&day=13&area=1&room=13')
 
   const columns = await page.$$('#day_main > thead:nth-child(1) > tr > th')
   const rows = await page.$$('#day_main > tbody > tr')
 
+  columns.shift() // remove first `Time` header element
+
+  const columnNames = await (Promise.all(columns.map(column => page.evaluate(e => e.innerText, column))))
+
   // Creates zero-initialized 2D array of size `rows.length`
-  let matrix = [...Array(rows.length)].map(e => Array(columns.length - 1).fill(0));
+  let matrix = [...Array(rows.length)].map(e => Array(columns.length).fill(0));
 
   for (let index in rows) {
     index = parseInt(index)
@@ -65,29 +69,28 @@ const book = async (username, password) => {
     }    
   }
 
-  const date = new Date()
+  const timeIndex = getNextPossibleTimeIndex();
 
-  const inputHour = 14
-  const inputMinutes = 25
+  // Two options: book room within next 30 minutes or within hour.
 
-  let bookingHour = inputHour;
-  let bookingMinutes = 0;
+  let bestEntries = [computeBestEntry(timeIndex, matrix), computeBestEntry(timeIndex + 1, matrix)]
+  
+  console.log(bestEntries)
 
-  if (inputMinutes >= 30) {
-    bookingHour++
-  } else {
-    bookingMinutes = 30  
-  }
+  const rowIndex = convertIndex(matrix, bestEntries[0].bestTime, bestEntries[0].bestRoom);
+  await bookEntry(page, rows, bestEntries[0].bestTime, rowIndex, bestEntries[0].maxLength);
+}
 
-  const timeIndex = Math.min(Math.max((bookingHour - 7) * 2, 0) + (bookingMinutes == 30 ? 1 : 0), 30)
+module.exports = book
 
-  let max = 0
-  let bestRoom = 0
-
+function computeBestEntry(timeIndex, matrix) {
+  let maxLength = 0;
+  let bestRoom = 0;
+  let bestTime = timeIndex;
   for (let roomIndex in matrix[timeIndex]) {
     if (matrix[timeIndex][roomIndex] == 0) {
-      // check belows
-      let offset = 1
+      let offset = 1;
+
       while (offset < 4 && (timeIndex + offset < matrix.length)) {
         if (matrix[timeIndex + offset][roomIndex] == 0) {
           offset++
@@ -96,15 +99,52 @@ const book = async (username, password) => {
         }
       }
 
-      if (offset > max) {
-        max = offset
-        bestRoom = roomIndex
+      if (offset > maxLength) {
+        maxLength = offset;
+        bestRoom = roomIndex;
       }
     }
   }
-  console.log(matrix.join('\n'))
-  console.log(`Best position is at: ${bestRoom} for ${max} thirty minute interval(s)`)
-
+  return { bestTime, bestRoom, maxLength };
 }
 
-module.exports = book
+function getNextPossibleTimeIndex() {
+  const date = new Date();
+
+  const inputHour = 15
+  const inputMinutes = 25
+
+  let bookingHour = inputHour
+  let bookingMinutes = 0
+
+  if (inputMinutes >= 30) {
+    bookingHour++
+  }
+  else {
+    bookingMinutes = 30
+  }
+  const timeIndex = Math.min(Math.max((bookingHour - 7) * 2, 0) + (bookingMinutes == 30 ? 1 : 0), 30)
+  return timeIndex
+}
+
+function convertIndex(matrix, timeIndex, roomIndex) {
+  let rowIndex = 0;
+  for (let i = matrix[timeIndex].indexOf(0); i != roomIndex; i = matrix[timeIndex].indexOf(0, i + 1)) {
+    rowIndex++;
+  }
+  return rowIndex;
+}
+
+async function bookEntry(page, rows, timeIndex, rowIndex, length) {
+  const entries = await rows[timeIndex].$$('td.new > div > a');
+  entries[rowIndex].click();
+  
+  await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+  await page.click('#div_name');
+  await page.keyboard.type('Study');
+
+  await page.evaluate((length) => {
+    document.getElementById('end_seconds').selectedIndex = length - 1;
+  }, length);
+}
