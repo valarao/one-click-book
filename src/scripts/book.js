@@ -3,7 +3,54 @@ const puppeteer = require('puppeteer');
 const { buildMatrix } = require('../helpers/matrix');
 const login = require('./login');
 
-const computeBestEntry = (timeIndex, matrix) => {
+/**
+ * Converts a roomIndex in matrix representation to
+ * the corresponding index in the HTML table
+ * @param {number[][]} matrix
+ * @param {number} timeIndex
+ * @param {number} roomIndex
+ * @returns {number}
+ */
+function convertIndex(matrix, timeIndex, roomIndex) {
+  let rowIndex = 0;
+  for (let i = matrix[timeIndex].indexOf(0);
+    i !== roomIndex;
+    i = matrix[timeIndex].indexOf(0, i + 1)) {
+    rowIndex += 1;
+  }
+  return rowIndex;
+}
+
+/**
+ * Books the corresponding entry in HTML timetable
+ * within the given array of entry ElementHandlers
+ * @param {Page} page
+ * @param {ElementHandle[]} rows
+ * @param {number} timeIndex - index of a time period
+ * @param {number} roomIndex - index of a room
+ * @param {number} length - length of time to book room for
+ */
+async function bookEntry(page, rows, timeIndex, roomIndex, length) {
+  const entries = await rows[timeIndex].$$('td.new > div > a');
+  entries[roomIndex].click();
+
+  await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+  await page.click('#div_name');
+  await page.keyboard.type('Study');
+
+  await page.evaluate((len) => {
+    document.getElementById('end_seconds').selectedIndex = len - 1;
+  }, length);
+}
+
+/**
+ * Given a timeIndex, return the index of the room with most availability
+ * @param {number} timeIndex - index of a time period
+ * @param {int[][]} matrix
+ * @returns {number}
+ */
+function computeBestEntry(timeIndex, matrix) {
   let maxLength = 0;
   let bestRoom = 0;
   const bestTime = timeIndex;
@@ -28,9 +75,21 @@ const computeBestEntry = (timeIndex, matrix) => {
   });
 
   return { bestTime, bestRoom, maxLength };
-};
+}
 
-const getNextPossibleTimeIndex = () => {
+/**
+ * From the current time, return the next available
+ * 'timeIndex' for which a room booking is possible.
+ *
+ * The starting index at 0 is equivalent to 7:00 AM.
+ * Every increment is 30 minutes each.
+ *
+ * Example:
+ *  If the current time is 9:25, the next possible room booking
+ *  is at 9:30, which at time index 5.
+ * @returns {number}
+ */
+function getNextPossibleTimeIndex() {
   const date = new Date();
 
   const inputHour = date.getHours();
@@ -51,46 +110,6 @@ const getNextPossibleTimeIndex = () => {
   );
 
   return timeIndex;
-};
-
-/**
- * Converts a roomIndex in matrix representation to
- * the corresponding index in the HTML table
- * @param {number[][]} matrix
- * @param {number} timeIndex
- * @param {number} roomIndex
- */
-const convertIndex = (matrix, timeIndex, roomIndex) => {
-  let rowIndex = 0;
-  for (let i = matrix[timeIndex].indexOf(0);
-    i !== roomIndex;
-    i = matrix[timeIndex].indexOf(0, i + 1)) {
-    rowIndex += 1;
-  }
-  return rowIndex;
-};
-
-/**
- * Books the corresponding entry in HTML timetable
- * within the given array of entry ElementHandlers
- * @param {Page} page
- * @param {ElementHandle[]} rows
- * @param {number} timeIndex - index of a time period
- * @param {number} roomIndex - index of a room
- * @param {number} length - length of time to book room for
- */
-async function bookEntry(page, rows, timeIndex, roomIndex, length) {
-  const entries = await rows[timeIndex].$$('td.new > div > a');
-  entries[roomIndex].click();
-
-  await page.waitForNavigation({ waitUntil: 'networkidle2' });
-
-  await page.click('#div_name');
-  await page.keyboard.type('Study');
-
-  await page.evaluate((len) => {
-    document.getElementById('end_seconds').selectedIndex = len - 1;
-  }, length);
 }
 
 async function book(username, password) {
