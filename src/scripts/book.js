@@ -43,7 +43,13 @@ async function bookEntry(page, rows, timeIndex, roomIndex, length) {
     document.getElementById('end_seconds').selectedIndex = len - 1;
   }, length);
 
-  await page.click('#edit_entry_submit_save > input');
+  await Promise.all([
+    page.waitForNavigation(),
+    page.click('#edit_entry_submit_save > input')
+  ])
+
+  if (await page.$x('//h2[text()="Scheduling Conflict"]') !== null)
+    throw new Error('Scheduling conflict. You may have already booked a room today.')
 }
 
 /**
@@ -52,7 +58,7 @@ async function bookEntry(page, rows, timeIndex, roomIndex, length) {
  * @param {int[][]} matrix
  * @returns {number}
  */
-function computeBestEntry(timeIndex, matrix) {
+function computeBestEntry(timeIndex, matrix, columnNames) {
   let maxLength = 0;
   let bestRoom = 0;
   const bestTime = timeIndex;
@@ -72,6 +78,9 @@ function computeBestEntry(timeIndex, matrix) {
       if (offset > maxLength) {
         maxLength = offset;
         bestRoom = roomIndex;
+      } else if (offset == maxLength) {
+        // tiebreaker rule
+
       }
     }
   });
@@ -124,19 +133,26 @@ async function book(username, password) {
   await login(page, username, password);
 
   const { matrix, rows, columnNames } = await buildMatrix(page);
+  console.log(columnNames)
   const timeIndex = getNextPossibleTimeIndex();
 
   // Compute two alternatives
   const bestEntries = [
-    computeBestEntry(timeIndex, matrix),
-    computeBestEntry(timeIndex + 1, matrix),
+    computeBestEntry(timeIndex, matrix, columnNames),
+    computeBestEntry(timeIndex + 1, matrix, columnNames),
   ];
 
-  const columnIndex = convertIndex(matrix, bestEntries[0].bestTime, bestEntries[0].bestRoom);
-  await bookEntry(page, rows, bestEntries[0].bestTime, columnIndex, bestEntries[0].maxLength);
+  console.log(bestEntries[0])
+  console.log(bestEntries[1])
 
-  // eslint-disable-next-line no-console
-  console.log(`Booked ${columnNames[bestEntries[0].bestRoom]} at timeIndex ${bestEntries[0].bestTime} for ${bestEntries[0].maxLength} thirty-minute increments`);
+  const columnIndex = convertIndex(matrix, bestEntries[0].bestTime, bestEntries[0].bestRoom);
+
+  try {
+    await bookEntry(page, rows, bestEntries[0].bestTime, columnIndex, bestEntries[0].maxLength);
+    console.log(`Booked ${columnNames[bestEntries[0].bestRoom]} at timeIndex ${bestEntries[0].bestTime} for ${bestEntries[0].maxLength} thirty-minute increments`);
+  } catch(e) {
+    console.log(e.message)
+  }
 }
 
 module.exports = book;
