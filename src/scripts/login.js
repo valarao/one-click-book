@@ -18,4 +18,5 @@ module.exports = async function login(page, username, password) {
   await xclick(page, LOGIN_BTN_XPATH);
 
   await page.waitForNavigation({ waitUntil: 'networkidle2' });
+  await page.waitFor('#day_main');
 };
