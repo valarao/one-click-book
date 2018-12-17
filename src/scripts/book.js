@@ -84,7 +84,6 @@ function computeBestEntry(timeIndex, matrix, columnNames) {
       if (offset > maxLength) {
         maxLength = offset;
         bestRoom = roomIndex;
-
         bestCapacity = parseInt(columnName.substring(columnName.indexOf('(') + 1, columnName.indexOf(')')), 10);
       } else if (offset === maxLength) {
         const roomCapacity = parseInt(columnName.substring(columnName.indexOf('(') + 1, columnName.indexOf(')')), 10);
@@ -138,7 +137,7 @@ function getNextPossibleTimeIndex() {
 }
 
 /**
- * Book the room :)
+ * Book the room with the best available time and capacity
  * @param {string} username
  * @param {string} password
  */

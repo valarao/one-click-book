@@ -25,11 +25,3 @@ app.post('/autobook', async (req, res) => {
 
 // eslint-disable-next-line no-console
 app.listen(3000, () => console.log('Sauder Room Booker Running'));
-
-// const { SSC_USER, SSC_PASS } = process.env;
-
-// async function run() {
-//   await book(SSC_USER, SSC_PASS);
-// }
-
-// run();

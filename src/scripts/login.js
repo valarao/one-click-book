@@ -6,6 +6,13 @@ const USERNAME_SELECTOR = '#username';
 const PASSWORD_SELECTOR = '#password';
 const LOGIN_BTN_XPATH = "//button[@type='submit' and contains(., 'Login')]";
 
+/**
+ * Login to SSC given username and password and redirect to
+ * Sauder Room Booking page for booking access
+ * @param { string } page
+ * @param { string } username
+ * @param { string } password
+ */
 module.exports = async function login(page, username, password) {
   await page.goto(LOGIN_BOOK_URL);
 
