@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const puppeteer = require('puppeteer');
 
 const { buildMatrix } = require('../helpers/matrix');
@@ -45,11 +46,12 @@ async function bookEntry(page, rows, timeIndex, roomIndex, length) {
 
   await Promise.all([
     page.waitForNavigation(),
-    page.click('#edit_entry_submit_save > input')
-  ])
+    page.click('#edit_entry_submit_save > input'),
+  ]);
 
-  if (await page.$x('//h2[text()="Scheduling Conflict"]') !== null)
-    throw new Error('Scheduling conflict. You may have already booked a room today.')
+  if ((await page.$x('//h2[text()="Scheduling Conflict"]')).length !== 0) {
+    throw new Error('Scheduling conflict. You may have already booked a room today.');
+  }
 }
 
 /**
@@ -61,6 +63,8 @@ async function bookEntry(page, rows, timeIndex, roomIndex, length) {
 function computeBestEntry(timeIndex, matrix, columnNames) {
   let maxLength = 0;
   let bestRoom = 0;
+  let bestCapacity = 0;
+
   const bestTime = timeIndex;
 
   matrix[timeIndex].forEach((_, roomIndex) => {
@@ -75,17 +79,30 @@ function computeBestEntry(timeIndex, matrix, columnNames) {
         }
       }
 
+      const columnName = columnNames[roomIndex];
+
       if (offset > maxLength) {
         maxLength = offset;
         bestRoom = roomIndex;
-      } else if (offset == maxLength) {
+
+        bestCapacity = parseInt(columnName.substring(columnName.indexOf('(') + 1, columnName.indexOf(')')), 10);
+      } else if (offset === maxLength) {
         // tiebreaker rule
 
+        const roomCapacity = parseInt(columnName.substring(columnName.indexOf('(') + 1, columnName.indexOf(')')), 10);
+
+        if (roomCapacity > bestCapacity) {
+          maxLength = offset;
+          bestRoom = roomIndex;
+          bestCapacity = roomCapacity;
+        }
       }
     }
   });
 
-  return { bestTime, bestRoom, maxLength };
+  return {
+    bestTime, bestRoom, maxLength, bestCapacity,
+  };
 }
 
 /**
@@ -133,7 +150,6 @@ async function book(username, password) {
   await login(page, username, password);
 
   const { matrix, rows, columnNames } = await buildMatrix(page);
-  console.log(columnNames)
   const timeIndex = getNextPossibleTimeIndex();
 
   // Compute two alternatives
@@ -142,16 +158,13 @@ async function book(username, password) {
     computeBestEntry(timeIndex + 1, matrix, columnNames),
   ];
 
-  console.log(bestEntries[0])
-  console.log(bestEntries[1])
-
   const columnIndex = convertIndex(matrix, bestEntries[0].bestTime, bestEntries[0].bestRoom);
 
   try {
     await bookEntry(page, rows, bestEntries[0].bestTime, columnIndex, bestEntries[0].maxLength);
     console.log(`Booked ${columnNames[bestEntries[0].bestRoom]} at timeIndex ${bestEntries[0].bestTime} for ${bestEntries[0].maxLength} thirty-minute increments`);
-  } catch(e) {
-    console.log(e.message)
+  } catch (e) {
+    console.log(e.message);
   }
 }
 
