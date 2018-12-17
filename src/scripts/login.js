@@ -16,7 +16,11 @@ module.exports = async function login(page, username, password) {
   await page.keyboard.type(password);
 
   await xclick(page, LOGIN_BTN_XPATH);
+  await page.waitForNavigation({ waitUntil: ['load', 'domcontentloaded', 'networkidle2'] });
 
-  await page.waitForNavigation({ waitUntil: 'networkidle2' });
+  if ((await page.$x('//*[@id="col2"]/section/p/span[@class="login_error"]')).length !== 0) {
+    throw new Error('Login Failed.');
+  }
+
   await page.waitFor('#day_main');
 };

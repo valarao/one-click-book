@@ -87,10 +87,7 @@ function computeBestEntry(timeIndex, matrix, columnNames) {
 
         bestCapacity = parseInt(columnName.substring(columnName.indexOf('(') + 1, columnName.indexOf(')')), 10);
       } else if (offset === maxLength) {
-        // tiebreaker rule
-
         const roomCapacity = parseInt(columnName.substring(columnName.indexOf('(') + 1, columnName.indexOf(')')), 10);
-
         if (roomCapacity > bestCapacity) {
           maxLength = offset;
           bestRoom = roomIndex;
@@ -140,6 +137,11 @@ function getNextPossibleTimeIndex() {
   return timeIndex;
 }
 
+/**
+ * Book the room :)
+ * @param {string} username
+ * @param {string} password
+ */
 async function book(username, password) {
   const browser = await puppeteer.launch({
     headless: process.env.NODE_ENV === 'production',
@@ -147,7 +149,11 @@ async function book(username, password) {
 
   const [page] = await browser.pages();
 
-  await login(page, username, password);
+  try {
+    await login(page, username, password);
+  } catch (e) {
+    return { err: e };
+  }
 
   const { matrix, rows, columnNames } = await buildMatrix(page);
   const timeIndex = getNextPossibleTimeIndex();
@@ -162,9 +168,9 @@ async function book(username, password) {
 
   try {
     await bookEntry(page, rows, bestEntries[0].bestTime, columnIndex, bestEntries[0].maxLength);
-    console.log(`Booked ${columnNames[bestEntries[0].bestRoom]} at timeIndex ${bestEntries[0].bestTime} for ${bestEntries[0].maxLength} thirty-minute increments`);
+    return { msg: `Booked ${columnNames[bestEntries[0].bestRoom]} at timeIndex ${bestEntries[0].bestTime} for ${bestEntries[0].maxLength} thirty-minute increments` };
   } catch (e) {
-    console.log(e.message);
+    return { err: e };
   }
 }
 
