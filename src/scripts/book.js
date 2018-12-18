@@ -105,6 +105,10 @@ function computeBestEntry(timeIndex, matrix, columnNames) {
  * From the current time, return the next available
  * 'timeIndex' for which a room booking is possible.
  *
+ * If the current time is later than 10:00 PM (22:00),
+ * return timeIndex as -1, which will attempt to book
+ * the best available room at 7:00 AM the next day.
+ *
  * The starting index at 0 is equivalent to 7:00 AM.
  * Every increment is 30 minutes each.
  *
@@ -126,6 +130,10 @@ function getNextPossibleTimeIndex() {
     bookingHour += 1;
   } else {
     bookingMinutes = 30;
+  }
+
+  if (bookingHour >= 22) {
+    return -1;
   }
 
   const timeIndex = Math.min(
@@ -155,7 +163,17 @@ async function book(username, password) {
   }
 
   const { matrix, rows, columnNames } = await buildMatrix(page);
-  const timeIndex = getNextPossibleTimeIndex();
+  let timeIndex = getNextPossibleTimeIndex();
+
+  // Attempt to fix 22:00 - 24:00 case
+  // if (timeIndex === -1) {
+  //   timeIndex = 0;
+  //   await page.click('body > div.contents > nav:nth-child(3) > a.date_after');
+  //   console.log('boop1');
+  //   await page.waitForNavigation({ waitUntil: ['load', 'domcontentloaded', 'networkidle2'] });
+  //   console.log('boop2');
+  // }
+  // console.log('boop3');
 
   // Compute two alternatives
   const bestEntries = [
